@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import BrandMark from "@/components/BrandMark";
+import SiteHeader from "@/components/SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,9 +27,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <header className="fixed left-4 top-4 z-50">
-          <BrandMark />
-        </header>
+        <SiteHeader />
         {children}
       </body>
     </html>
