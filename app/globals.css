@@ -1,0 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-dynapuff: "DynaPuff", system-ui;
+}
+
+body {
+  margin: 0;
+}
+
+.font-brand {
+  font-family: "DynaPuff", system-ui;
+  font-weight: 550;
+}
