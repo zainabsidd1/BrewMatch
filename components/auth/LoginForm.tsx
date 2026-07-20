@@ -75,7 +75,7 @@ export default function LoginForm() {
           error={errors.email}
         />
 
-        <div className="space-y-2">
+        <div>
           <AuthInput
             id="password"
             label="Password"
@@ -98,18 +98,11 @@ export default function LoginForm() {
               </button>
             }
           />
-
-          <div className="pr-2 text-right">
-            <button
-              type="button"
-              className="cursor-pointer text-xs font-semibold text-stone-600 transition hover:text-[#3B2314] hover:underline"
-            >
-              Forgot Password?
-            </button>
-          </div>
         </div>
 
-        <p className="pt-6 text-center text-sm text-stone-500">
+        <div className="mx-auto h-px w-3/4 bg-[#C4A484]" aria-hidden />
+
+        <p className="text-center text-sm text-stone-500">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
