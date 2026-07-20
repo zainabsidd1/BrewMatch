@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
 import models  # noqa: F401 — registers the User model with SQLAlchemy
 from routes.auth import router as auth_router
+from routes.calendar import router as calendar_router
 from routes.quiz import router as quiz_router
 
 
@@ -27,6 +28,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(quiz_router)
+app.include_router(calendar_router)
 
 
 @app.get("/health")

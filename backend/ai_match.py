@@ -1,11 +1,12 @@
 import json
 import logging
+import random
 import re
 from typing import Any
 
 import httpx
 
-from coffee_catalog import COFFEE_DRINKS, CoffeeDrink, get_drink_by_id_or_name
+from coffee_catalog import COFFEE_DRINKS, CoffeeDrink
 from config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
@@ -87,13 +88,13 @@ def _heuristic_match(answers: list[dict[str, Any]]) -> CoffeeDrink:
     bold_words = (
         "strong",
         "conquer",
-        "espresso",
         "focused",
         "black coffee",
         "isn't strong",
         "black and white",
         "logic",
         "organized",
+        "stronger kick",
     )
     refreshing_words = (
         "sunshine",
@@ -165,56 +166,165 @@ def _heuristic_match(answers: list[dict[str, Any]]) -> CoffeeDrink:
     candidates = [
         drink for drink in COFFEE_DRINKS if top_category in drink["categories"]
     ]
-    return candidates[0] if candidates else COFFEE_DRINKS[0]
+    if not candidates:
+        return random.choice(COFFEE_DRINKS)
+    return random.choice(candidates)
+
+
+def _inferred_traits(answers: list[dict[str, Any]]) -> dict[str, bool]:
+    text = " ".join(
+        f"{item.get('question', '')} {item.get('option_label', '')}".lower()
+        for item in answers
+    )
+    return {
+        "sweet": any(
+            word in text
+            for word in (
+                "sweet",
+                "syrup",
+                "dessert",
+                "whipped cream",
+                "cold foam",
+                "pastries",
+                "caramel",
+                "vanilla",
+            )
+        ),
+        "bold": any(
+            word in text
+            for word in (
+                "focused",
+                "stronger kick",
+                "extra espresso",
+                "black coffee",
+                "as it is",
+                "wake me up",
+            )
+        ),
+        "refreshing": any(
+            word in text
+            for word in ("cool me down", "iced", "refresh", "exploring the city")
+        ),
+        "adventurous": any(
+            word in text
+            for word in (
+                "surprise",
+                "fun and different",
+                "unique",
+                "seasonal",
+                "specialty",
+                "creative",
+            )
+        ),
+        "cozy": any(
+            word in text
+            for word in (
+                "comforting",
+                "relax",
+                "quiet café",
+                "warm drink",
+                "calm",
+                "cozy",
+            )
+        ),
+        "organized": any(
+            word in text
+            for word in ("to-do", "organized", "focused", "reliable", "charger")
+        ),
+    }
 
 
 def _heuristic_blurb(drink: CoffeeDrink, answers: list[dict[str, Any]]) -> str:
-    snippets = [item["option_label"] for item in answers if item.get("option_label")]
-    primary = snippets[0] if snippets else "a slower morning"
-    secondary = snippets[1] if len(snippets) > 1 else "a quiet café corner"
-    likes_sweet = any(
-        word in " ".join(snippets).lower()
-        for word in (
-            "sweet",
-            "vanilla",
-            "caramel",
-            "hazelnut",
-            "syrup",
-            "chocolate",
-            "dessert",
-            "sweet tooth",
-            "whipped cream",
-            "cold foam",
-            "pastries",
-        )
-    )
+    traits = _inferred_traits(answers)
+    category = drink["categories"][0].lower()
+    name = drink["name"]
 
-    if likes_sweet:
-        finish = (
-            f"A little syrup would go beautifully with {drink['name']}, "
-            "rounding it out without covering up the coffee."
+    if traits["cozy"]:
+        opener = (
+            f"{name} fits a softer pace, the kind of cup you settle into when "
+            "you want comfort more than spectacle."
+        )
+    elif traits["organized"] or traits["bold"]:
+        opener = (
+            f"{name} suits a clear-headed kind of energy, steady enough to keep "
+            "you moving without asking for attention."
+        )
+    elif traits["adventurous"]:
+        opener = (
+            f"{name} leans playful and a little unexpected, matching a taste for "
+            "something beyond the usual order."
+        )
+    elif traits["refreshing"]:
+        opener = (
+            f"{name} has an easy, cooling lift to it, made for days when you want "
+            "coffee to feel light and bright."
         )
     else:
-        finish = (
-            f"{drink['name']} keeps things honest and unfussy, "
-            "just a clear, satisfying cup."
+        opener = (
+            f"{name} feels balanced and approachable, a cup that meets you where "
+            "you are without overcomplicating the moment."
         )
 
-    return (
-        f"There's a calm confidence in preferring mornings that feel "
-        f'"{primary.lower()}", and {drink["name"]} carries that same steady warmth. '
-        f'It suits someone drawn to "{secondary.lower()}", '
-        f"unhurried, grounded, and easy to return to. "
-        f"As a {drink['categories'][0].lower()} drink, it has a simple richness "
-        f"that doesn't need dressing up to feel complete. "
-        f"{finish}"
-    )
+    if traits["sweet"]:
+        middle = (
+            f"As a {category} drink, it has a gentle richness that leaves room "
+            "for a flavored syrup if you want a sweeter finish."
+        )
+        finish = (
+            "Vanilla or caramel would sit nicely beside it, soft enough to feel "
+            "like a treat without hiding the coffee."
+        )
+    elif traits["bold"]:
+        middle = (
+            f"As a {category} drink, it keeps the coffee forward and unfussy, "
+            "with enough presence to feel intentional."
+        )
+        finish = (
+            "Skip the extras if you like, or keep them light so the brew stays "
+            "the main character."
+        )
+    elif traits["adventurous"]:
+        middle = (
+            f"As a {category} drink, it has just enough personality to feel "
+            "special while still tasting like something you would order again."
+        )
+        finish = (
+            "It is the sort of match that rewards curiosity without turning "
+            "coffee into a gimmick."
+        )
+    else:
+        middle = (
+            f"As a {category} drink, it has a simple richness that does not need "
+            "dressing up to feel complete."
+        )
+        finish = (
+            f"{name} keeps things honest and easy, just a clear, satisfying cup."
+        )
+
+    return f"{opener} {middle} {finish}"
 
 
 def _soften_punctuation(text: str) -> str:
     """Prefer commas/periods over em dashes in match copy."""
     cleaned = text.replace(" — ", ", ").replace("—", ", ")
     cleaned = cleaned.replace(" – ", ", ").replace("–", ", ")
+    return cleaned
+
+
+def _strip_direct_answer_quotes(blurb: str, answers: list[dict[str, Any]]) -> str:
+    """Remove awkward literal answer snippets if the model quoted them anyway."""
+    cleaned = blurb
+    for item in answers:
+        label = str(item.get("option_label", "")).strip()
+        if len(label) < 8:
+            continue
+        # Strip quoted forms of the answer text.
+        for form in (label, label.lower(), label.rstrip(".")):
+            cleaned = cleaned.replace(f'"{form}"', "your vibe")
+            cleaned = cleaned.replace(f"“{form}”", "your vibe")
+    # Clean up clumsy leftovers from replacements.
+    cleaned = re.sub(r"\byour vibe\b(, your vibe)+", "your vibe", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
     return cleaned
 
 
@@ -288,17 +398,18 @@ def match_coffee_with_ai(answers: list[dict[str, Any]]) -> tuple[CoffeeDrink, st
         "Match the tone of a coffee description: flowing, sensory, and human. "
         "Not salesy, not like a chatbot, and never meta.\n"
         "Avoid em dashes. Prefer commas or short separate sentences instead.\n"
-        "Do NOT use phrases like 'curated recommendation', 'based on your quiz', "
-        "'perfect for someone like you', 'next time you order', or 'random pick'.\n"
-        "Weave in a few of the user's answers naturally "
-        "(especially coffee job, add-ons, sweetness, iced vs warm, syrups, strength). "
-        "Personality answers can flavor the tone, but coffee preferences should drive the match story.\n"
+        "IMPORTANT: Never quote the user's answers directly. Do not put answer text in "
+        "quotation marks. Do not paste phrases like quiz options word-for-word. "
+        "Paraphrase the vibe instead (for example say they like a focused morning or "
+        "a comforting ritual, not the exact option text).\n"
+        "Use coffee preferences (add-ons, sweetness, iced vs warm, syrups, strength) "
+        "to drive the story. Personality can flavor the tone lightly.\n"
         "If they enjoy sweetness or syrups, mention a syrup pairing in one natural sentence.\n"
         "Return JSON only with keys: drink_id, personalized_match.\n"
         f"drink_id must be \"{drink['id']}\".\n\n"
         f"Drink categories: {', '.join(drink['categories'])}\n"
         f"Drink description for tone reference: {drink['description']}\n\n"
-        "User answer highlights:\n"
+        "User answer highlights (paraphrase only, never quote):\n"
         f"{_answers_for_prompt(answers)}\n"
     )
 
@@ -306,10 +417,7 @@ def match_coffee_with_ai(answers: list[dict[str, Any]]) -> tuple[CoffeeDrink, st
         content = _call_ollama(prompt)
         payload = _parse_ai_json(content)
         blurb = _soften_punctuation(str(payload.get("personalized_match", "")).strip())
-        # Prefer the heuristic drink; only swap if Ollama returns a valid catalog id.
-        ai_drink = get_drink_by_id_or_name(str(payload.get("drink_id", "")))
-        if ai_drink:
-            drink = ai_drink
+        blurb = _strip_direct_answer_quotes(blurb, answers)
         if not blurb:
             raise ValueError("Missing personalized_match")
         return drink, blurb

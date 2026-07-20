@@ -10,16 +10,6 @@ class CoffeeDrink(TypedDict):
 
 COFFEE_DRINKS: list[CoffeeDrink] = [
     {
-        "id": "espresso",
-        "name": "Espresso",
-        "description": (
-            "A rich, concentrated shot of coffee with an intense aroma and bold flavor. "
-            "Served in a small cup, it's the foundation of many classic espresso-based drinks "
-            "and is perfect for those who enjoy coffee in its purest form."
-        ),
-        "categories": ["Classic", "Bold"],
-    },
-    {
         "id": "americano",
         "name": "Americano",
         "description": (

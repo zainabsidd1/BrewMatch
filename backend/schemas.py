@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -43,3 +43,53 @@ class QuizMatchResponse(BaseModel):
     description: str
     categories: list[str]
     personalized_match: str
+
+
+class CoffeeLogCreate(BaseModel):
+    drink_id: str = Field(min_length=1, max_length=64)
+    drink_name: str = Field(min_length=1, max_length=120)
+    rating: int = Field(ge=1, le=5)
+    date_tried: date | None = None
+    notes: str | None = Field(default=None, max_length=500)
+    is_favorite: bool = False
+    source: str = Field(default="brewmatch_recommendation", max_length=64)
+
+
+class CoffeeLogUpdate(BaseModel):
+    rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str | None = Field(default=None, max_length=500)
+    is_favorite: bool | None = None
+    date_tried: date | None = None
+
+
+class CoffeeLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    drink_id: str
+    drink_name: str
+    date_added: datetime
+    date_tried: date
+    rating: int | None
+    notes: str | None
+    is_favorite: bool
+    source: str
+
+
+class CalendarDayEntry(BaseModel):
+    date: date
+    entries: list[CoffeeLogResponse]
+
+
+class CalendarMonthResponse(BaseModel):
+    year: int
+    month: int
+    days: list[CalendarDayEntry]
+
+
+class CoffeeJourneyStats(BaseModel):
+    streak_days: int
+    coffees_tried: int
+    favorite_drink: str | None
+    favorite_drink_avg_rating: float | None
+

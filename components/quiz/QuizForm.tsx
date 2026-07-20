@@ -100,6 +100,7 @@ export default function QuizForm() {
     return (
       <div className="flex w-full max-w-[46rem] flex-col gap-3.5">
         <QuizResult
+          drinkId={matchResult.drink_id}
           drinkName={matchResult.drink_name}
           description={matchResult.description}
           categories={matchResult.categories}

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import CoffeeJournalCard from "@/components/dashboard/CoffeeJournalCard";
 import DashboardBackground from "@/components/dashboard/DashboardBackground";
 import QuizCard from "@/components/dashboard/QuizCard";
 import { fetchCurrentUser, type User } from "@/lib/api";
@@ -54,9 +55,15 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <section className="mt-8 w-full max-w-md">
-          <QuizCard />
-        </section>
+        <div className="mt-8 flex w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <section className="w-full max-w-md">
+            <QuizCard />
+          </section>
+
+          <section className="w-full max-w-md lg:ml-auto">
+            <CoffeeJournalCard />
+          </section>
+        </div>
       </div>
     </DashboardBackground>
   );
