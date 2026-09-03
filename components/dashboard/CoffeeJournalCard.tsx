@@ -159,19 +159,9 @@ export default function CoffeeJournalCard() {
   return (
     <article className="w-full rounded-2xl bg-white/95 p-5 shadow-[0_8px_32px_rgba(59,35,20,0.1)] backdrop-blur-sm sm:p-6">
       <section>
-        <div className="mb-3 flex items-center gap-2.5">
-          <Image
-            src="/streak-flame.png"
-            alt=""
-            width={28}
-            height={28}
-            className="size-7 object-contain"
-            aria-hidden
-          />
-          <h2 className="text-lg font-bold text-[#3B2314]">
-            Your Coffee Journey
-          </h2>
-        </div>
+        <h2 className="mb-3 text-lg font-bold text-[#3B2314]">
+          Your Coffee Journey
+        </h2>
 
         {statsError ? (
           <p className="text-sm text-red-700">{statsError}</p>
@@ -179,7 +169,17 @@ export default function CoffeeJournalCard() {
           <p className="text-sm text-stone-500">Loading your streak...</p>
         ) : (
           <>
-            <p className="text-xl font-bold text-[#3B2314]">
+            <p className="flex items-center gap-2 text-xl font-bold text-[#3B2314]">
+              {stats.streak_days > 0 ? (
+                <Image
+                  src="/streak-flame.png"
+                  alt=""
+                  width={22}
+                  height={28}
+                  className="h-6 w-auto"
+                  aria-hidden
+                />
+              ) : null}
               {stats.streak_days} day streak
             </p>
             <p className="mt-1 text-sm leading-relaxed text-stone-600">
