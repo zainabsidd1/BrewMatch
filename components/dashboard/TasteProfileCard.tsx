@@ -139,14 +139,13 @@ export default function TasteProfileCard() {
     [profile],
   );
   const hasTempMix =
-    Boolean(profile) &&
-    profile.temperature_mix.iced + profile.temperature_mix.hot > 0;
+    (profile?.temperature_mix.iced ?? 0) + (profile?.temperature_mix.hot ?? 0) >
+    0;
   const hasSweetMix =
-    Boolean(profile) &&
-    profile.sweetness_mix.low +
-      profile.sweetness_mix.medium +
-      profile.sweetness_mix.high >
-      0;
+    (profile?.sweetness_mix.low ?? 0) +
+      (profile?.sweetness_mix.medium ?? 0) +
+      (profile?.sweetness_mix.high ?? 0) >
+    0;
   const hasData = hasTempMix || hasSweetMix;
 
   return (
