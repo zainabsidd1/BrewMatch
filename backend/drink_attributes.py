@@ -358,7 +358,46 @@ def resolve_logged_drink(drink_id: str, drink_name: str) -> tuple[str, DrinkAttr
     return "latte", DRINK_ATTRIBUTES["latte"]
 
 
-def logged_temperature(drink_id: str, drink_name: str, attrs: DrinkAttributes) -> Temperature | None:
+def _display_name_without_temperature(drink_name: str) -> str:
+    name = drink_name.strip().lower()
+    if name.startswith("iced "):
+        return name[5:].strip()
+    if name.startswith("hot "):
+        return name[4:].strip()
+    return name
+
+
+def logged_syrup(drink_name: str, attrs: DrinkAttributes) -> str | None:
+    """Add-on syrup encoded in a logged display name, e.g. 'Vanilla Latte'."""
+    remainder = _display_name_without_temperature(drink_name)
+    implied = attrs.get("implied_syrup")
+    for syrup in SYRUPS:
+        if remainder.startswith(f"{syrup} "):
+            if implied and syrup == implied:
+                return None
+            return syrup
+    return None
+
+
+def logged_sweetness(drink_name: str, attrs: DrinkAttributes) -> Sweetness:
+    """Journal sweetness: high drinks stay high, add-on syrups are medium, else the drink default."""
+    base = attrs["default_sweetness"]
+    if base == "high":
+        return "high"
+    if logged_syrup(drink_name, attrs):
+        return "medium"
+    return base
+
+
+def logged_temperature(
+    drink_id: str,
+    drink_name: str,
+    attrs: DrinkAttributes,
+    stored: str | None = None,
+) -> Temperature | None:
+    if stored in {"hot", "iced"}:
+        return stored  # type: ignore[return-value]
+
     key = drink_id.strip().lower()
     name = drink_name.strip().lower()
 
@@ -374,4 +413,9 @@ def logged_temperature(drink_id: str, drink_name: str, attrs: DrinkAttributes) -
         return "iced"
     if temps == ["hot"]:
         return "hot"
-    return None
+    # Dual-temp drinks encode iced in the name; otherwise the log is hot.
+    if "hot" in temps:
+        return "hot"
+    if "iced" in temps:
+        return "iced"
+    return attrs["default_temperature"]

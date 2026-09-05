@@ -107,6 +107,7 @@ export default function LogDrinkButton() {
         drink_id: selectedDrink.id,
         drink_name: loggedDrinkName(selectedDrink, temperature, syrup),
         rating,
+        temperature,
         source: "manual",
       });
       window.dispatchEvent(new Event("brewmatch:journal-updated"));
@@ -125,7 +126,7 @@ export default function LogDrinkButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`${brewButtonClassName} mt-4 w-full px-4 py-2.5 text-sm`}
+        className={`${brewButtonClassName} w-full px-4 py-2.5 text-sm`}
       >
         Log a drink
       </button>

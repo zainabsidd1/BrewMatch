@@ -9,16 +9,18 @@ def test_create_journal_entry(client, auth_header):
         headers=headers,
         json={
             "drink_id": "latte",
-            "drink_name": "Latte",
+            "drink_name": "Caramel Latte",
             "rating": 4,
+            "temperature": "hot",
         },
     )
 
     assert response.status_code == 201
     body = response.json()
     assert body["drink_id"] == "latte"
-    assert body["drink_name"] == "Latte"
+    assert body["drink_name"] == "Caramel Latte"
     assert body["rating"] == 4
+    assert body["temperature_tag"] == "hot"
     assert body["date_tried"] == date.today().isoformat()
 
 
@@ -27,7 +29,7 @@ def test_retrieve_journal_entries(client, auth_header):
     client.post(
         "/calendar/logs",
         headers=headers,
-        json={"drink_id": "mocha", "drink_name": "Mocha", "rating": 5},
+        json={"drink_id": "mocha", "drink_name": "Mocha", "rating": 5, "temperature": "iced"},
     )
 
     listed = client.get("/calendar/logs", headers=headers)
@@ -35,6 +37,7 @@ def test_retrieve_journal_entries(client, auth_header):
     entries = listed.json()
     assert len(entries) == 1
     assert entries[0]["drink_name"] == "Mocha"
+    assert entries[0]["temperature_tag"] == "iced"
 
     today = date.today()
     month = client.get(

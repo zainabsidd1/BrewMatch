@@ -48,5 +48,6 @@ class CoffeeLog(Base):
         String(64),
         default="brewmatch_recommendation",
     )
+    temperature: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="coffee_logs")

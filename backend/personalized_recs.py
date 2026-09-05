@@ -11,6 +11,7 @@ from drink_attributes import (
     DrinkAttributes,
     Sweetness,
     Temperature,
+    logged_syrup,
     logged_temperature,
     resolve_logged_drink,
 )
@@ -94,8 +95,14 @@ def _logged_combinations(logs: list[Any]) -> set[tuple[str, str, str, str]]:
     seen: set[tuple[str, str, str, str]] = set()
     for log in logs:
         base_id, attrs = resolve_logged_drink(log.drink_id, log.drink_name)
-        temp = logged_temperature(log.drink_id, log.drink_name, attrs) or attrs["default_temperature"]
-        syrup = attrs["implied_syrup"]
+        temp = logged_temperature(
+            log.drink_id,
+            log.drink_name,
+            attrs,
+            getattr(log, "temperature", None),
+        ) or attrs["default_temperature"]
+        add_on = logged_syrup(log.drink_name, attrs)
+        syrup = add_on or attrs["implied_syrup"]
         seen.add((base_id, temp, syrup or "", ""))
         seen.add((base_id, temp, "", ""))
     return seen

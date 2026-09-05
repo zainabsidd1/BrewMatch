@@ -53,6 +53,7 @@ class CoffeeLogCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
     is_favorite: bool = False
     source: str = Field(default="brewmatch_recommendation", max_length=64)
+    temperature: str | None = Field(default=None, pattern="^(hot|iced)$")
 
 
 class CoffeeLogUpdate(BaseModel):

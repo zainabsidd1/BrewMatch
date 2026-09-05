@@ -16,12 +16,14 @@ def _log(
     drink_name: str,
     rating: int,
     notes: str = "",
+    temperature: str | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         drink_id=drink_id,
         drink_name=drink_name,
         rating=rating,
         notes=notes,
+        temperature=temperature,
     )
 
 
@@ -36,6 +38,34 @@ def test_highly_rated_iced_drinks_push_profile_toward_iced():
 
     assert profile.preferred_temperature == "iced"
     assert profile.temperature_mix["iced"] > profile.temperature_mix["hot"]
+
+
+def test_logged_hot_and_iced_drinks_count_in_temperature_mix():
+    logs = [
+        _log("latte", "Caramel Latte", 5, temperature="hot"),
+        _log("latte", "Vanilla Latte", 4, temperature="iced"),
+    ]
+
+    profile = build_user_taste_profile(logs)
+
+    assert profile.temperature_mix["hot"] > 0
+    assert profile.temperature_mix["iced"] > 0
+
+
+def test_syrup_and_sweet_drinks_shape_sweetness_mix():
+    logs = [
+        _log("latte", "Latte", 5),
+        _log("latte", "Vanilla Latte", 5),
+        _log("biscoff-latte", "Biscoff Latte", 5),
+        _log("mocha", "Iced Mocha", 4),
+    ]
+
+    profile = build_user_taste_profile(logs)
+
+    assert profile.sweetness_mix["low"] > 0
+    assert profile.sweetness_mix["medium"] > 0
+    assert profile.sweetness_mix["high"] > 0
+    assert profile.sweetness_mix["high"] > profile.sweetness_mix["low"]
 
 
 def test_low_ratings_negatively_affect_related_preferences():

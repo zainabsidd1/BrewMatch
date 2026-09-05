@@ -150,7 +150,7 @@ export default function TasteProfileCard() {
   const hasData = hasTempMix || hasSweetMix;
 
   return (
-    <article className="relative overflow-hidden rounded-[1.75rem] bg-[#3B2314] px-6 py-7 text-[#FBF6F0] shadow-[0_18px_40px_rgba(59,35,20,0.28)]">
+    <article className="relative flex flex-col overflow-hidden rounded-[1.75rem] bg-[#3B2314] px-6 py-7 text-[#FBF6F0] shadow-[0_18px_40px_rgba(59,35,20,0.28)]">
       <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] ring-1 ring-inset ring-[#E8C9A8]/30" />
       <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-[#E8C9A8]/10" />
       <div className="pointer-events-none absolute -bottom-12 -left-8 size-32 rounded-full bg-[#8B5E3C]/40" />
@@ -159,10 +159,6 @@ export default function TasteProfileCard() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#E8C9A8]">
           From your journal
         </p>
-        <LogDrinkButton />
-        <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#FBF6F0]">
-          Your Coffee Profile
-        </h2>
 
         {loading ? (
           <p className="mt-5 text-sm text-[#E8C9A8]/80">Reading your cups...</p>
@@ -201,6 +197,10 @@ export default function TasteProfileCard() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="relative mt-6 border-t border-[#E8C9A8]/20 pt-6">
+        <LogDrinkButton />
       </div>
     </article>
   );

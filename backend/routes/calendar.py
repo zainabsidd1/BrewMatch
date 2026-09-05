@@ -29,6 +29,7 @@ def _log_response(entry: CoffeeLog) -> CoffeeLogResponse:
                 entry.drink_id,
                 entry.drink_name,
                 attrs,
+                entry.temperature,
             ),
         }
     )
@@ -87,6 +88,7 @@ def create_coffee_log(
         notes=data.notes,
         is_favorite=data.is_favorite,
         source=data.source,
+        temperature=data.temperature,
     )
     db.add(entry)
     db.commit()

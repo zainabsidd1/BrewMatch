@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from config import cors_origin_regex, cors_origins
 from database import Base, engine
@@ -13,9 +14,23 @@ from routes.quiz import router as quiz_router
 from routes.recommendations import router as recommendations_router
 
 
+def _ensure_coffee_log_temperature_column() -> None:
+    inspector = inspect(engine)
+    if "coffee_logs" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("coffee_logs")}
+    if "temperature" in columns:
+        return
+    with engine.begin() as connection:
+        connection.execute(
+            text("ALTER TABLE coffee_logs ADD COLUMN temperature VARCHAR(8)")
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    _ensure_coffee_log_temperature_column()
     yield
 
 

@@ -165,6 +165,7 @@ export async function addCoffeeToCalendar(
     rating: number;
     notes?: string;
     source?: string;
+    temperature?: "hot" | "iced";
   },
   token = getToken(),
 ) {

@@ -7,6 +7,8 @@ from typing import Any
 from drink_attributes import (
     Sweetness,
     Temperature,
+    logged_sweetness,
+    logged_syrup,
     logged_temperature,
     resolve_logged_drink,
 )
@@ -99,10 +101,15 @@ def _build_mixes(logs: list[Any]) -> tuple[dict[str, int], dict[str, int]]:
     for log in logs:
         weight = _mix_weight(log)
         _base_id, attrs = resolve_logged_drink(log.drink_id, log.drink_name)
-        temp = logged_temperature(log.drink_id, log.drink_name, attrs)
+        temp = logged_temperature(
+            log.drink_id,
+            log.drink_name,
+            attrs,
+            getattr(log, "temperature", None),
+        )
         if temp:
             temp_counts[temp] = temp_counts.get(temp, 0.0) + weight
-        sweetness = attrs["default_sweetness"]
+        sweetness = logged_sweetness(log.drink_name, attrs)
         sweet_counts[sweetness] = sweet_counts.get(sweetness, 0.0) + weight
 
     return (
@@ -138,17 +145,25 @@ def build_user_taste_profile(logs: list[Any]) -> TasteProfile:
 
         magnitude = abs(weight)
         base_id, attrs = resolve_logged_drink(log.drink_id, log.drink_name)
-        temp = logged_temperature(log.drink_id, log.drink_name, attrs)
+        temp = logged_temperature(
+            log.drink_id,
+            log.drink_name,
+            attrs,
+            getattr(log, "temperature", None),
+        )
         if temp:
             temp_scores[temp] += weight
         base_scores[base_id] += weight
-        sweetness_weighted += SWEETNESS_RANK[attrs["default_sweetness"]] * weight
+        sweetness_weighted += SWEETNESS_RANK[logged_sweetness(log.drink_name, attrs)] * weight
         strength_weighted += STRENGTH_RANK[attrs["strength"]] * weight
         milk_weighted += MILK_RANK[attrs["milkiness"]] * weight
         abs_weight += magnitude
 
         if attrs["implied_syrup"]:
             flavor_scores[attrs["implied_syrup"]] += weight
+        add_on_syrup = logged_syrup(log.drink_name, attrs)
+        if add_on_syrup:
+            flavor_scores[add_on_syrup] += weight
 
         notes = (getattr(log, "notes", None) or "").lower()
         for flavor in NOTE_FLAVORS:
