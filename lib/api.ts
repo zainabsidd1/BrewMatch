@@ -1,6 +1,9 @@
 import { getToken } from "@/lib/auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
+  /\/$/,
+  "",
+);
 
 type ApiErrorBody = {
   detail?: string | { msg: string }[];
@@ -28,11 +31,21 @@ async function parseApiError(response: Response) {
     return data.detail[0].msg;
   }
 
-  return "Something went wrong. Please try again.";
+  return `Request failed (${response.status}). Check that NEXT_PUBLIC_API_URL points at the FastAPI backend.`;
+}
+
+async function apiFetch(path: string, init?: RequestInit) {
+  try {
+    return await fetch(`${API_URL}${path}`, init);
+  } catch {
+    throw new Error(
+      `Can't reach the API at ${API_URL}. Start the backend locally or set NEXT_PUBLIC_API_URL to your Render URL.`,
+    );
+  }
 }
 
 export async function registerUser(email: string, password: string) {
-  const response = await fetch(`${API_URL}/auth/register`, {
+  const response = await apiFetch("/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -46,7 +59,7 @@ export async function registerUser(email: string, password: string) {
 }
 
 export async function loginUser(email: string, password: string) {
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await apiFetch("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -64,7 +77,7 @@ export async function fetchCurrentUser(token = getToken()) {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/auth/me`, {
+  const response = await apiFetch("/auth/me", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -100,7 +113,7 @@ export async function matchQuizAnswers(
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/quiz/match`, {
+  const response = await apiFetch("/quiz/match", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -151,6 +164,7 @@ export async function addCoffeeToCalendar(
     drink_name: string;
     rating: number;
     notes?: string;
+    source?: string;
   },
   token = getToken(),
 ) {
@@ -158,7 +172,7 @@ export async function addCoffeeToCalendar(
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/calendar/logs`, {
+  const response = await apiFetch("/calendar/logs", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -166,7 +180,7 @@ export async function addCoffeeToCalendar(
     },
     body: JSON.stringify({
       ...payload,
-      source: "brewmatch_recommendation",
+      source: payload.source ?? "brewmatch_recommendation",
     }),
   });
 
@@ -182,7 +196,7 @@ export async function deleteCoffeeLog(logId: number, token = getToken()) {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/calendar/logs/${logId}`, {
+  const response = await apiFetch(`/calendar/logs/${logId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -201,8 +215,8 @@ export async function fetchCalendarMonth(
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(
-    `${API_URL}/calendar/month?year=${year}&month=${month}`,
+  const response = await apiFetch(
+    `/calendar/month?year=${year}&month=${month}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     },
@@ -220,7 +234,7 @@ export async function fetchCoffeeJourneyStats(token = getToken()) {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/calendar/stats`, {
+  const response = await apiFetch("/calendar/stats", {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -273,7 +287,7 @@ export async function fetchPersonalizedRecommendations(token = getToken()) {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/recommendations/personalized`, {
+  const response = await apiFetch("/recommendations/personalized", {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -289,7 +303,7 @@ export async function fetchTasteProfile(token = getToken()) {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/recommendations/taste-profile`, {
+  const response = await apiFetch("/recommendations/taste-profile", {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -298,4 +312,32 @@ export async function fetchTasteProfile(token = getToken()) {
   }
 
   return response.json() as Promise<TasteProfile>;
+}
+
+export type CatalogDrink = {
+  id: string;
+  name: string;
+  temperatures: Array<"hot" | "iced">;
+  compatible_syrups: string[];
+};
+
+export type DrinkCatalog = {
+  drinks: CatalogDrink[];
+  syrups: string[];
+};
+
+export async function fetchDrinkCatalog(token = getToken()) {
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await apiFetch("/catalog/drinks", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json() as Promise<DrinkCatalog>;
 }

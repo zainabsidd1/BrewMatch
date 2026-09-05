@@ -308,6 +308,33 @@ ALIASES: dict[str, tuple[str, Temperature]] = {
 }
 
 
+def catalog_logging_options() -> list[dict[str, object]]:
+    options: list[dict[str, object]] = []
+    for drink in COFFEE_DRINKS:
+        if drink["id"] in ALIASES:
+            base_id, temperature = ALIASES[drink["id"]]
+            attrs = DRINK_ATTRIBUTES[base_id]
+            options.append(
+                {
+                    "id": drink["id"],
+                    "name": drink["name"],
+                    "temperatures": [temperature],
+                    "compatible_syrups": list(attrs["compatible_syrups"]),
+                }
+            )
+            continue
+        attrs = DRINK_ATTRIBUTES[drink["id"]]
+        options.append(
+            {
+                "id": drink["id"],
+                "name": drink["name"],
+                "temperatures": list(attrs["temperatures"]),
+                "compatible_syrups": list(attrs["compatible_syrups"]),
+            }
+        )
+    return options
+
+
 def resolve_logged_drink(drink_id: str, drink_name: str) -> tuple[str, DrinkAttributes]:
     key = drink_id.strip().lower()
     if key in ALIASES:

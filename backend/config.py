@@ -41,6 +41,17 @@ OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "12"))
 
 
 def cors_origins() -> list[str]:
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
-    return origins or ["http://localhost:3000"]
+    raw = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    )
+    origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+    return origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+def cors_origin_regex() -> str | None:
+    explicit = os.getenv("CORS_ORIGIN_REGEX")
+    if explicit is not None:
+        stripped = explicit.strip()
+        return stripped or None
+    return r"https://([a-z0-9-]+\.)*vercel\.app"

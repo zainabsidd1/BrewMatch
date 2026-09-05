@@ -106,6 +106,18 @@ class SweetnessMix(BaseModel):
     high: int = 0
 
 
+class CatalogDrinkResponse(BaseModel):
+    id: str
+    name: str
+    temperatures: list[str]
+    compatible_syrups: list[str]
+
+
+class CatalogResponse(BaseModel):
+    drinks: list[CatalogDrinkResponse]
+    syrups: list[str]
+
+
 class TasteProfileResponse(BaseModel):
     preferred_temperature: str | None = None
     sweetness: str | None = None

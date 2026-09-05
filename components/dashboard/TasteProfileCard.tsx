@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchTasteProfile, type TasteProfile } from "@/lib/api";
+import LogDrinkButton from "@/components/dashboard/LogDrinkButton";
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -158,7 +159,8 @@ export default function TasteProfileCard() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#E8C9A8]">
           From your journal
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#FBF6F0]">
+        <LogDrinkButton />
+        <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#FBF6F0]">
           Your Coffee Profile
         </h2>
 
