@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 
 from coffee_catalog import COFFEE_DRINKS, CoffeeDrink
-from config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS
+from config import OLLAMA_BASE_URL, OLLAMA_ENABLED, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -345,6 +345,8 @@ def _parse_ai_json(raw: str) -> dict[str, Any]:
 
 
 def _ollama_available() -> bool:
+    if not OLLAMA_ENABLED:
+        return False
     try:
         with httpx.Client(timeout=2.0) as client:
             response = client.get(f"{OLLAMA_BASE_URL.rstrip('/')}/api/tags")

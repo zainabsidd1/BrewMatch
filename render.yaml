@@ -1,0 +1,33 @@
+# Render Blueprint: FastAPI web service + managed PostgreSQL.
+# Auto-deploy from Git is off so GitHub Actions deploys only after CI on main.
+
+databases:
+  - name: brewmatch-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: brewmatch-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: ENVIRONMENT
+        value: production
+      - key: OLLAMA_ENABLED
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brewmatch-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false

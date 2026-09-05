@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user
+from drink_attributes import logged_temperature, resolve_logged_drink
 from models import CoffeeLog, User
 from schemas import (
     CalendarDayEntry,
@@ -18,6 +19,19 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
+
+
+def _log_response(entry: CoffeeLog) -> CoffeeLogResponse:
+    _base_id, attrs = resolve_logged_drink(entry.drink_id, entry.drink_name)
+    return CoffeeLogResponse.model_validate(entry).model_copy(
+        update={
+            "temperature_tag": logged_temperature(
+                entry.drink_id,
+                entry.drink_name,
+                attrs,
+            ),
+        }
+    )
 
 
 def _compute_streak(tried_dates: set[date]) -> int:
@@ -77,7 +91,7 @@ def create_coffee_log(
     db.add(entry)
     db.commit()
     db.refresh(entry)
-    return entry
+    return _log_response(entry)
 
 
 @router.get("/logs", response_model=list[CoffeeLogResponse])
@@ -90,7 +104,7 @@ def list_coffee_logs(
         .where(CoffeeLog.user_id == current_user.id)
         .order_by(CoffeeLog.date_tried.desc(), CoffeeLog.id.desc())
     ).all()
-    return list(logs)
+    return [_log_response(log) for log in logs]
 
 
 @router.patch("/logs/{log_id}", response_model=CoffeeLogResponse)
@@ -110,7 +124,7 @@ def update_coffee_log(
 
     db.commit()
     db.refresh(entry)
-    return entry
+    return _log_response(entry)
 
 
 @router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -154,7 +168,7 @@ def get_calendar_month(
     days = [
         CalendarDayEntry(
             date=day,
-            entries=[CoffeeLogResponse.model_validate(entry) for entry in entries],
+            entries=[_log_response(entry) for entry in entries],
         )
         for day, entries in sorted(by_day.items())
     ]

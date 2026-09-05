@@ -60,6 +60,21 @@ export default function CoffeeJournalCard() {
   const [removingId, setRemovingId] = useState<number | null>(null);
 
   useEffect(() => {
+    function handleJournalUpdated() {
+      setStatsVersion((value) => value + 1);
+      setCalendarVersion((value) => value + 1);
+    }
+
+    window.addEventListener("brewmatch:journal-updated", handleJournalUpdated);
+    return () => {
+      window.removeEventListener(
+        "brewmatch:journal-updated",
+        handleJournalUpdated,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     fetchCoffeeJourneyStats()
@@ -129,8 +144,7 @@ export default function CoffeeJournalCard() {
     setRemovingId(logId);
     try {
       await deleteCoffeeLog(logId);
-      setCalendarVersion((value) => value + 1);
-      setStatsVersion((value) => value + 1);
+      window.dispatchEvent(new Event("brewmatch:journal-updated"));
     } catch (err) {
       setCalendarError(
         err instanceof Error ? err.message : "Could not remove this entry.",
@@ -325,7 +339,19 @@ export default function CoffeeJournalCard() {
                       className="flex items-start justify-between gap-3 text-sm text-[#3B2314]"
                     >
                       <div className="min-w-0">
-                        <p className="font-semibold">{entry.drink_name}</p>
+                        <p className="flex flex-wrap items-center gap-1.5 font-semibold">
+                          <span>{entry.drink_name}</span>
+                          {entry.temperature_tag === "iced" ? (
+                            <span className="rounded-full bg-[#D7E8F3] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3B2314]">
+                              Iced
+                            </span>
+                          ) : null}
+                          {entry.temperature_tag === "hot" ? (
+                            <span className="rounded-full bg-[#F3E7DA] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3B2314]">
+                              Hot
+                            </span>
+                          ) : null}
+                        </p>
                         <p className="text-xs text-stone-600">
                           {entry.rating
                             ? `${entry.rating}/5 rating`

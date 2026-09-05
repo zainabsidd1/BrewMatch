@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CoffeeJournalCard from "@/components/dashboard/CoffeeJournalCard";
 import DashboardBackground from "@/components/dashboard/DashboardBackground";
+import PersonalizedRecsCard from "@/components/dashboard/PersonalizedRecsCard";
 import QuizCard from "@/components/dashboard/QuizCard";
+import TasteProfileCard from "@/components/dashboard/TasteProfileCard";
 import { fetchCurrentUser, type User } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
 import { getDisplayName } from "@/lib/formatUser";
@@ -55,12 +57,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-8 flex w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <section className="w-full max-w-md">
+        <div className="mt-8 flex w-full flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <section className="flex w-full max-w-md flex-col gap-6">
             <QuizCard />
+            <PersonalizedRecsCard />
           </section>
 
-          <section className="w-full max-w-md lg:ml-auto">
+          <section className="w-full max-w-sm xl:mt-2 xl:max-w-[19.5rem]">
+            <TasteProfileCard />
+          </section>
+
+          <section className="w-full max-w-md xl:ml-0">
             <CoffeeJournalCard />
           </section>
         </div>

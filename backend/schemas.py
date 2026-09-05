@@ -74,6 +74,7 @@ class CoffeeLogResponse(BaseModel):
     notes: str | None
     is_favorite: bool
     source: str
+    temperature_tag: str | None = None
 
 
 class CalendarDayEntry(BaseModel):
@@ -92,4 +93,45 @@ class CoffeeJourneyStats(BaseModel):
     coffees_tried: int
     favorite_drink: str | None
     favorite_drink_avg_rating: float | None
+
+
+class TemperatureMix(BaseModel):
+    iced: int = 0
+    hot: int = 0
+
+
+class SweetnessMix(BaseModel):
+    low: int = 0
+    medium: int = 0
+    high: int = 0
+
+
+class TasteProfileResponse(BaseModel):
+    preferred_temperature: str | None = None
+    sweetness: str | None = None
+    preferred_flavors: list[str] = []
+    strength: str | None = None
+    milk_preference: str | None = None
+    confidence: str
+    rated_count: int
+    temperature_mix: TemperatureMix
+    sweetness_mix: SweetnessMix
+
+
+class PersonalizedDrinkResponse(BaseModel):
+    drink_id: str
+    base_drink: str
+    display_name: str
+    temperature: str
+    sweetness: str
+    syrup: str | None = None
+    modifier: str | None = None
+    explanation: str
+
+
+class PersonalizedRecommendationsResponse(BaseModel):
+    taste_profile: TasteProfileResponse
+    what_you_might_like: PersonalizedDrinkResponse | None = None
+    try_something_new: PersonalizedDrinkResponse | None = None
+    message: str | None = None
 

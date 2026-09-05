@@ -126,6 +126,7 @@ export type CoffeeLog = {
   notes: string | null;
   is_favorite: boolean;
   source: string;
+  temperature_tag?: "iced" | "hot" | null;
 };
 
 export type CalendarMonth = {
@@ -228,4 +229,73 @@ export async function fetchCoffeeJourneyStats(token = getToken()) {
   }
 
   return response.json() as Promise<CoffeeJourneyStats>;
+}
+
+export type TasteProfile = {
+  preferred_temperature: string | null;
+  sweetness: string | null;
+  preferred_flavors: string[];
+  strength: string | null;
+  milk_preference: string | null;
+  confidence: "none" | "low" | "full";
+  rated_count: number;
+  temperature_mix: {
+    iced: number;
+    hot: number;
+  };
+  sweetness_mix: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+};
+
+export type PersonalizedDrink = {
+  drink_id: string;
+  base_drink: string;
+  display_name: string;
+  temperature: string;
+  sweetness: string;
+  syrup: string | null;
+  modifier: string | null;
+  explanation: string;
+};
+
+export type PersonalizedRecommendations = {
+  taste_profile: TasteProfile;
+  what_you_might_like: PersonalizedDrink | null;
+  try_something_new: PersonalizedDrink | null;
+  message: string | null;
+};
+
+export async function fetchPersonalizedRecommendations(token = getToken()) {
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(`${API_URL}/recommendations/personalized`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json() as Promise<PersonalizedRecommendations>;
+}
+
+export async function fetchTasteProfile(token = getToken()) {
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(`${API_URL}/recommendations/taste-profile`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json() as Promise<TasteProfile>;
 }

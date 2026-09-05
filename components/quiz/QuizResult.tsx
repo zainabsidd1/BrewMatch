@@ -38,6 +38,7 @@ export default function QuizResult({
         rating,
       });
       setPhase("saved");
+      window.dispatchEvent(new Event("brewmatch:journal-updated"));
     } catch (err) {
       setError(
         err instanceof Error
