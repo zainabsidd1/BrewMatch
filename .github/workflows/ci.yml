@@ -96,7 +96,7 @@ jobs:
           cache: npm
 
       - name: Install Vercel CLI
-        run: npm install -g vercel@41
+        run: npm install -g vercel@latest
 
       - name: Pull Vercel production env
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
