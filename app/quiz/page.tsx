@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import WarmArcBackground from "@/components/auth/WarmArcBackground";
 import QuizForm from "@/components/quiz/QuizForm";
 import { getToken } from "@/lib/auth";
 
@@ -21,12 +22,7 @@ export default function QuizPage() {
   if (!ready) {
     return (
       <main className="relative flex min-h-[calc(100vh-57px)] items-center justify-center px-4 py-5">
-        <div
-          className="absolute inset-0 bg-repeat"
-          style={{ backgroundImage: "url('/coffee-pattern.png')" }}
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-white/70" aria-hidden />
+        <WarmArcBackground />
         <p className="relative z-10 text-stone-500">Loading quiz...</p>
       </main>
     );
@@ -34,12 +30,7 @@ export default function QuizPage() {
 
   return (
     <main className="relative flex min-h-[calc(100vh-57px)] items-center justify-center px-4 py-5">
-      <div
-        className="absolute inset-0 bg-repeat"
-        style={{ backgroundImage: "url('/coffee-pattern.png')" }}
-        aria-hidden
-      />
-      <div className="absolute inset-0 bg-white/70" aria-hidden />
+      <WarmArcBackground />
       <div className="relative z-10 w-full max-w-[46rem]">
         <QuizForm />
       </div>
