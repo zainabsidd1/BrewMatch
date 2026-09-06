@@ -2,6 +2,22 @@ type IconProps = {
   className?: string;
 };
 
+export function UserIcon({ className = "size-4" }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 19.5c1.2-3.2 3.7-5 7-5s5.8 1.8 7 5" />
+    </svg>
+  );
+}
+
 export function MailIcon({ className = "size-4" }: IconProps) {
   return (
     <svg

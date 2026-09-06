@@ -3,7 +3,8 @@ from types import SimpleNamespace
 import httpx
 
 from personalized_recs import (
-    _logged_combinations,
+    _combo_catalog_description,
+    _logged_drink_keys,
     generate_exploration_recommendation,
     generate_familiar_recommendation,
     generate_personalized_recommendations,
@@ -97,21 +98,75 @@ def test_what_you_might_like_follows_historical_taste_trends():
     assert recommendation.drink_id in {"americano", *profile.liked_base_ids}
 
 
-def test_try_something_new_is_untried():
+def test_try_something_new_is_a_random_untried_drink(monkeypatch):
+    from personalized_recs import DrinkCombination
+
     logs = [
+        _log("latte", "Latte", 5),
+        _log("latte", "Vanilla Latte", 4),
         _log("iced-americano", "Iced Americano", 5),
-        _log("latte", "Latte", 4),
-        _log("mocha", "Mocha", 5),
     ]
     profile = build_user_taste_profile(logs)
-    familiar = generate_familiar_recommendation(profile, logs)
+    familiar = DrinkCombination(
+        drink_id="latte",
+        base_drink="Latte",
+        temperature="hot",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    captured: list = []
+
+    def _choice(seq):
+        captured.extend(seq)
+        return seq[0]
+
+    monkeypatch.setattr("personalized_recs.random.choice", _choice)
 
     recommendation = generate_exploration_recommendation(profile, logs, familiar)
 
-    logged_keys = _logged_combinations(logs)
-    assert recommendation.key not in logged_keys
-    if familiar is not None:
-        assert recommendation.key != familiar.key
+    logged_keys = _logged_drink_keys(logs)
+    candidate_keys = {combo.drink_key for combo in captured}
+
+    assert recommendation.drink_key not in logged_keys
+    assert recommendation.drink_key != familiar.drink_key
+    assert ("latte", "hot", "") not in candidate_keys
+    assert ("latte", "hot", "vanilla") not in candidate_keys
+    assert ("americano", "iced", "") not in candidate_keys
+    # Same base with a new syrup or temperature still counts as a new drink.
+    assert ("latte", "iced", "") in candidate_keys
+    assert ("latte", "hot", "caramel") in candidate_keys
+    assert ("americano", "hot", "") in candidate_keys
+
+
+def test_try_something_new_uses_catalog_description(monkeypatch):
+    from coffee_catalog import COFFEE_DRINKS
+    from personalized_recs import DrinkCombination
+
+    combo = DrinkCombination(
+        drink_id="cold-brew",
+        base_drink="Cold Brew",
+        temperature="iced",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    monkeypatch.setattr(
+        "personalized_recs.generate_exploration_recommendation",
+        lambda *_args, **_kwargs: combo,
+    )
+
+    logs = [
+        _log("iced-americano", "Iced Americano", 5),
+        _log("latte", "Latte", 4),
+    ]
+    result = generate_personalized_recommendations(logs)
+    catalog = next(drink for drink in COFFEE_DRINKS if drink["id"] == "cold-brew")
+
+    assert result["try_something_new"]["explanation"] == catalog["description"]
+    assert result["try_something_new"]["explanation"] == _combo_catalog_description(
+        combo
+    )
 
 
 def test_zero_history_returns_fallback_state(monkeypatch):

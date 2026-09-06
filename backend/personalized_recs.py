@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ai_match import _call_ollama, _ollama_available, _parse_ai_json, _soften_punctuation
+from coffee_catalog import COFFEE_DRINKS
 from drink_attributes import (
     DRINK_ATTRIBUTES,
     DrinkAttributes,
@@ -39,6 +40,11 @@ class DrinkCombination:
             self.syrup or "",
             self.modifier or "",
         )
+
+    @property
+    def drink_key(self) -> tuple[str, str, str]:
+        """Base + temperature + syrup. Modifier add-ons do not change the drink."""
+        return (self.drink_id, self.temperature, self.syrup or "")
 
     @property
     def display_name(self) -> str:
@@ -89,6 +95,7 @@ def _iter_combinations() -> list[DrinkCombination]:
 
 
 ALL_COMBINATIONS = _iter_combinations()
+PLAIN_COMBINATIONS = [combo for combo in ALL_COMBINATIONS if combo.modifier is None]
 
 
 def _logged_combinations(logs: list[Any]) -> set[tuple[str, str, str, str]]:
@@ -108,12 +115,19 @@ def _logged_combinations(logs: list[Any]) -> set[tuple[str, str, str, str]]:
     return seen
 
 
-def _logged_base_ids(logs: list[Any]) -> set[str]:
-    bases: set[str] = set()
+def _logged_drink_keys(logs: list[Any]) -> set[tuple[str, str, str]]:
+    seen: set[tuple[str, str, str]] = set()
     for log in logs:
-        base_id, _attrs = resolve_logged_drink(log.drink_id, log.drink_name)
-        bases.add(base_id)
-    return bases
+        base_id, attrs = resolve_logged_drink(log.drink_id, log.drink_name)
+        temp = logged_temperature(
+            log.drink_id,
+            log.drink_name,
+            attrs,
+            getattr(log, "temperature", None),
+        ) or attrs["default_temperature"]
+        add_on = logged_syrup(log.drink_name, attrs)
+        seen.add((base_id, temp, add_on or ""))
+    return seen
 
 
 def _score_combination(combo: DrinkCombination, profile: TasteProfile) -> float:
@@ -207,57 +221,32 @@ def generate_familiar_recommendation(
 
 
 def generate_exploration_recommendation(
-    profile: TasteProfile,
+    _profile: TasteProfile,
     logs: list[Any],
     familiar: DrinkCombination | None = None,
 ) -> DrinkCombination:
-    logged = _logged_combinations(logs)
-    logged_bases = _logged_base_ids(logs)
+    logged = _logged_drink_keys(logs)
+    familiar_key = familiar.drink_key if familiar is not None else None
 
-    ranked = sorted(
-        ALL_COMBINATIONS,
-        key=lambda combo: (
-            -_score_combination(combo, profile),
-            combo.drink_id,
-            combo.temperature,
-            combo.syrup or "",
-            combo.modifier or "",
-        ),
-    )
+    def _pool(combos: list[DrinkCombination]) -> list[DrinkCombination]:
+        return [
+            combo
+            for combo in combos
+            if combo.drink_key not in logged and combo.drink_key != familiar_key
+        ]
 
-    unused_base = [
-        combo
-        for combo in ranked
-        if combo.drink_id not in logged_bases
-        and combo.key not in logged
-        and (familiar is None or combo.key != familiar.key)
-    ]
-    if unused_base:
-        return unused_base[0]
-
-    novel_twist = [
-        combo
-        for combo in ranked
-        if combo.key not in logged
-        and (familiar is None or combo.key != familiar.key)
-        and (
-            combo.syrup is not None
-            or combo.modifier is not None
-            or (
-                profile.preferred_temperature
-                and combo.temperature != profile.preferred_temperature
-            )
-        )
-    ]
-    if novel_twist:
-        return novel_twist[0]
-
-    leftover = [
-        combo
-        for combo in ranked
-        if combo.key not in logged and (familiar is None or combo.key != familiar.key)
-    ]
-    return leftover[0] if leftover else ranked[0]
+    candidates = _pool(PLAIN_COMBINATIONS)
+    if not candidates:
+        candidates = _pool(ALL_COMBINATIONS)
+    if not candidates:
+        candidates = [
+            combo
+            for combo in PLAIN_COMBINATIONS
+            if familiar is None or combo.drink_key != familiar_key
+        ]
+    if not candidates:
+        candidates = ALL_COMBINATIONS
+    return random.choice(candidates)
 
 
 def _combo_public(combo: DrinkCombination, explanation: str) -> dict[str, Any]:
@@ -290,31 +279,21 @@ def _fallback_familiar_explanation(combo: DrinkCombination, profile: TasteProfil
     )
 
 
-def _fallback_explore_explanation(combo: DrinkCombination, profile: TasteProfile) -> str:
-    temp = profile.preferred_temperature or combo.temperature
-    milk = profile.milk_preference or "balanced"
-    return (
-        f"You usually go for {temp}, {milk} drinks at {profile.sweetness or combo.sweetness} sweetness. "
-        f"{combo.base_drink} is a new base for you, so this keeps the profile you like while changing the structure. "
-        f"That is the small step out, not a total left turn."
-    )
-
-
-def _fallback_random_explanation(combo: DrinkCombination) -> str:
-    extras = []
-    if combo.syrup:
-        extras.append(combo.syrup)
-    if combo.modifier:
-        extras.append(combo.modifier)
-    twist = f" with {' and '.join(extras)}" if extras else ""
-    return (
-        f"{combo.display_name} is a solid place to start while your journal is empty. "
-        f"Try it {combo.temperature}{twist} and rate it so BrewMatch can learn what you actually like."
-    )
+def _combo_catalog_description(combo: DrinkCombination) -> str:
+    iced_id = f"iced-{combo.drink_id}"
+    if combo.temperature == "iced":
+        iced = next((drink for drink in COFFEE_DRINKS if drink["id"] == iced_id), None)
+        if iced:
+            return iced["description"]
+    catalog = next((drink for drink in COFFEE_DRINKS if drink["id"] == combo.drink_id), None)
+    if catalog:
+        return catalog["description"]
+    return combo.display_name
 
 
 def generate_random_recommendation() -> DrinkCombination:
-    return random.choice(ALL_COMBINATIONS)
+    pool = PLAIN_COMBINATIONS or ALL_COMBINATIONS
+    return random.choice(pool)
 
 
 def _explain_with_ollama(
@@ -368,7 +347,7 @@ def generate_personalized_recommendations(logs: list[Any]) -> dict[str, Any]:
             "what_you_might_like": None,
             "try_something_new": _combo_public(
                 explore,
-                _fallback_random_explanation(explore),
+                _combo_catalog_description(explore),
             ),
             "message": None,
         }
@@ -377,16 +356,15 @@ def generate_personalized_recommendations(logs: list[Any]) -> dict[str, Any]:
     explore = generate_exploration_recommendation(profile, logs, familiar)
 
     familiar_text = _explain_with_ollama(familiar, profile, "familiar")
-    explore_text = _explain_with_ollama(explore, profile, "explore")
-
     if not familiar_text:
         familiar_text = _fallback_familiar_explanation(familiar, profile)
-    if not explore_text:
-        explore_text = _fallback_explore_explanation(explore, profile)
 
     return {
         "taste_profile": profile_public_dict(profile),
         "what_you_might_like": _combo_public(familiar, familiar_text),
-        "try_something_new": _combo_public(explore, explore_text),
+        "try_something_new": _combo_public(
+            explore,
+            _combo_catalog_description(explore),
+        ),
         "message": None,
     }

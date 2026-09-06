@@ -77,10 +77,11 @@ def create_user(client: TestClient) -> Callable[..., dict]:
     def _create(
         email: str = "test@example.com",
         password: str = "Correct123!",
+        name: str = "Test User",
     ) -> dict:
         response = client.post(
             "/auth/register",
-            json={"email": email, "password": password},
+            json={"email": email, "password": password, "name": name},
         )
         assert response.status_code == 201, response.text
         return response.json()

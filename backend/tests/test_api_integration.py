@@ -4,7 +4,7 @@ from datetime import date
 def test_journal_flow_register_login_create_calendar_delete(client):
     registered = client.post(
         "/auth/register",
-        json={"email": "flow@example.com", "password": "Correct123!"},
+        json={"email": "flow@example.com", "password": "Correct123!", "name": "Flow"},
     )
     assert registered.status_code == 201
 

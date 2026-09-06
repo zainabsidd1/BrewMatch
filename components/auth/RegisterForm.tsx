@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AuthInput from "@/components/auth/AuthInput";
-import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "@/components/auth/AuthIcons";
+import { EyeIcon, EyeOffIcon, LockIcon, MailIcon, UserIcon } from "@/components/auth/AuthIcons";
 import { registerUser } from "@/lib/api";
 import { validateRegisterForm } from "@/lib/validateRegister";
 
 type FormErrors = {
+  name?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -16,6 +17,7 @@ type FormErrors = {
 
 export default function RegisterForm() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,6 +32,7 @@ export default function RegisterForm() {
     setApiError("");
 
     const validationErrors = validateRegisterForm({
+      name,
       email,
       password,
       confirmPassword,
@@ -43,7 +46,7 @@ export default function RegisterForm() {
     setIsSubmitting(true);
 
     try {
-      await registerUser(email, password);
+      await registerUser(email, password, name);
       router.push("/login");
     } catch (error) {
       setApiError(
@@ -68,6 +71,19 @@ export default function RegisterForm() {
             {apiError}
           </p>
         ) : null}
+
+        <AuthInput
+          id="name"
+          label="Name"
+          type="text"
+          name="name"
+          autoComplete="name"
+          placeholder="Your name"
+          icon={<UserIcon />}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          error={errors.name}
+        />
 
         <AuthInput
           id="email"

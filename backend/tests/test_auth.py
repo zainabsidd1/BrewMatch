@@ -1,12 +1,13 @@
 def test_registration_succeeds(client):
     response = client.post(
         "/auth/register",
-        json={"email": "new@example.com", "password": "Correct123!"},
+        json={"email": "new@example.com", "password": "Correct123!", "name": "Ada"},
     )
 
     assert response.status_code == 201
     body = response.json()
     assert body["email"] == "new@example.com"
+    assert body["name"] == "Ada"
     assert "id" in body
     assert "hashed_password" not in body
 
@@ -16,7 +17,7 @@ def test_duplicate_email_is_rejected(client, create_user):
 
     response = client.post(
         "/auth/register",
-        json={"email": "dup@example.com", "password": "Correct123!"},
+        json={"email": "dup@example.com", "password": "Correct123!", "name": "Dup"},
     )
 
     assert response.status_code == 400
@@ -62,3 +63,23 @@ def test_protected_route_rejects_invalid_token(client):
     )
 
     assert response.status_code == 401
+
+
+def test_me_returns_registered_name(client, auth_header):
+    headers = auth_header(email="named@example.com")
+
+    response = client.get("/auth/me", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["email"] == "named@example.com"
+    assert body["name"] == "Test User"
+
+
+def test_registration_requires_name(client):
+    response = client.post(
+        "/auth/register",
+        json={"email": "noname@example.com", "password": "Correct123!"},
+    )
+
+    assert response.status_code == 422

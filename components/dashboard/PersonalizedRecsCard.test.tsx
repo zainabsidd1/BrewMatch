@@ -70,6 +70,8 @@ describe("PersonalizedRecsCard", () => {
     expect(screen.getByText(/Americano/i)).toBeInTheDocument();
     expect(screen.getByText(/Try Something New/i)).toBeInTheDocument();
     expect(screen.getByText(/Cold Brew/i)).toBeInTheDocument();
+    expect(screen.getByText(/Something new to try/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Low sweet · Iced/i)).not.toBeInTheDocument();
   });
 
   it("shows a loading state", () => {

@@ -1,10 +1,12 @@
 type FormErrors = {
+  name?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
 };
 
 type RegisterFormData = {
+  name: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -12,6 +14,10 @@ type RegisterFormData = {
 
 export function validateRegisterForm(data: RegisterFormData): FormErrors {
   const errors: FormErrors = {};
+
+  if (!data.name.trim()) {
+    errors.name = "Name is required.";
+  }
 
   if (!data.email.trim()) {
     errors.email = "Email is required.";

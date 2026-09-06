@@ -12,6 +12,7 @@ type ApiErrorBody = {
 export type User = {
   id: number;
   email: string;
+  name: string | null;
   created_at: string;
 };
 
@@ -44,11 +45,11 @@ async function apiFetch(path: string, init?: RequestInit) {
   }
 }
 
-export async function registerUser(email: string, password: string) {
+export async function registerUser(email: string, password: string, name: string) {
   const response = await apiFetch("/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, name }),
   });
 
   if (!response.ok) {

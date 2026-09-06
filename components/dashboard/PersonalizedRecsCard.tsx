@@ -36,9 +36,11 @@ function detailsLine(drink: PersonalizedDrink) {
 function RecBlock({
   eyebrow,
   drink,
+  showDetails = true,
 }: {
   eyebrow: string;
   drink: PersonalizedDrink;
+  showDetails?: boolean;
 }) {
   const [phase, setPhase] = useState<"idle" | "rating" | "saved">("idle");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
@@ -98,9 +100,11 @@ function RecBlock({
           </button>
         ) : null}
       </div>
-      <p className="mt-1 text-xs font-medium text-stone-500">
-        {detailsLine(drink)}
-      </p>
+      {showDetails ? (
+        <p className="mt-1 text-xs font-medium text-stone-500">
+          {detailsLine(drink)}
+        </p>
+      ) : null}
       <p className="mt-2 text-sm leading-relaxed text-stone-600">
         {drink.explanation}
       </p>
@@ -205,6 +209,7 @@ export default function PersonalizedRecsCard() {
             <RecBlock
               eyebrow="Try Something New"
               drink={data.try_something_new}
+              showDetails={false}
             />
           ) : null}
         </div>

@@ -1,11 +1,20 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
     email: EmailStr
     password: str = Field(min_length=6)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Name is required")
+        return stripped
 
 
 class LoginRequest(BaseModel):
@@ -23,6 +32,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
+    name: str | None = None
     created_at: datetime
 
 

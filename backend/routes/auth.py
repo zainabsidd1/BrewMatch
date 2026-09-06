@@ -22,6 +22,7 @@ def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
 
     user = User(
         email=data.email,
+        name=data.name,
         hashed_password=hash_password(data.password),
     )
     db.add(user)

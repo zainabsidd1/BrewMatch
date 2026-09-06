@@ -27,10 +27,22 @@ def _ensure_coffee_log_temperature_column() -> None:
         )
 
 
+def _ensure_user_name_column() -> None:
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("users")}
+    if "name" in columns:
+        return
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(80)"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _ensure_coffee_log_temperature_column()
+    _ensure_user_name_column()
     yield
 
 

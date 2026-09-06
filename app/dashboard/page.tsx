@@ -41,7 +41,7 @@ export default function DashboardPage() {
     );
   }
 
-  const displayName = getDisplayName(user.email);
+  const displayName = getDisplayName(user.email, user.name);
 
   return (
     <DashboardBackground>
