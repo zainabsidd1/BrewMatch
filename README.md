@@ -8,6 +8,7 @@ Coffee recommender with a quiz, journal, and personalized drink suggestions.
 - `backend/` — FastAPI API + PostgreSQL. Deployed on Render.
 - `.github/workflows/` — CI, then deploy on push to `main`.
 
+
 ## Local setup
 
 **API** (from `backend/`):
