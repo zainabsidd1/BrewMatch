@@ -1,4 +1,4 @@
-# BrewMatch ☕ִ
+# BrewMatch ☕
 
 BrewMatch is a full-stack coffee recommendation app built with **Next.js, React, TypeScript, Tailwind CSS, FastAPI, PostgreSQL, and SQLAlchemy**. It matches users to drinks through a randomized personality quiz, then uses their coffee journal and ratings to personalize future suggestions.
 
@@ -7,7 +7,7 @@ Users can register/login, take the quiz, save and rate drinks, track them on a c
 This application includes:
 - User Registration and JWT Authentication
 - Randomized 15-Question Personality Quiz
-- Personalized Coffee Recommendation Engines
+- Personalized Coffee Recommendation Engine
 - Coffee Journal with Ratings, Notes, Calendar, and Streaks
 - PostgreSQL Persistence with SQLAlchemy ORM
 - Protected REST API Routes with FastAPI
@@ -16,5 +16,6 @@ This application includes:
 - **CI/CD Pipeline with GitHub Actions**
 
 **Live demo:** https://brew-match-two.vercel.app/
+
 **Demo account:** `johndoe@gmail.com` / `123456`
 
