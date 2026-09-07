@@ -347,7 +347,6 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
 export const QUIZ_SESSION_LENGTH = 15;
 export const COFFEE_PREFERENCE_COUNT = 2;
 
-/** Always include these taste/preference questions so matches stay coffee-grounded. */
 export const COFFEE_PREFERENCE_QUESTIONS: QuizQuestion[] = [
   {
     id: 101,
@@ -419,7 +418,7 @@ function shuffleQuestions(questions: QuizQuestion[]): QuizQuestion[] {
 }
 
 /**
- * Builds a quiz session with exactly `coffeeCount` coffee-preference questions
+ * Builds a quiz session with `coffeeCount` coffee-preference questions
  * and fills the rest from the general personality pool.
  */
 export function pickQuizSession(
@@ -439,12 +438,4 @@ export function pickQuizSession(
   );
 
   return shuffleQuestions([...selectedCoffee, ...selectedGeneral]);
-}
-
-/** @deprecated Prefer pickQuizSession for quiz runs. */
-export function pickRandomQuestions(
-  questions: QuizQuestion[],
-  count: number,
-): QuizQuestion[] {
-  return shuffleQuestions(questions).slice(0, Math.min(count, questions.length));
 }

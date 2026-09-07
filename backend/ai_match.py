@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def _catalog_for_prompt() -> str:
-    """Compact catalog — local models struggle with long prompts."""
     lines: list[str] = []
     for drink in COFFEE_DRINKS:
         categories = ", ".join(drink["categories"])
@@ -29,7 +28,6 @@ def _answers_for_prompt(answers: list[dict[str, Any]]) -> str:
 
 
 def _heuristic_match(answers: list[dict[str, Any]]) -> CoffeeDrink:
-    """Scores drinks by answer keywords, with stronger weight on coffee-preference Qs."""
     text = " ".join(
         f"{item['question']} {item['option_label']}".lower() for item in answers
     )
@@ -305,24 +303,20 @@ def _heuristic_blurb(drink: CoffeeDrink, answers: list[dict[str, Any]]) -> str:
 
 
 def _soften_punctuation(text: str) -> str:
-    """Prefer commas/periods over em dashes in match copy."""
     cleaned = text.replace(" — ", ", ").replace("—", ", ")
     cleaned = cleaned.replace(" – ", ", ").replace("–", ", ")
     return cleaned
 
 
 def _strip_direct_answer_quotes(blurb: str, answers: list[dict[str, Any]]) -> str:
-    """Remove awkward literal answer snippets if the model quoted them anyway."""
     cleaned = blurb
     for item in answers:
         label = str(item.get("option_label", "")).strip()
         if len(label) < 8:
             continue
-        # Strip quoted forms of the answer text.
         for form in (label, label.lower(), label.rstrip(".")):
             cleaned = cleaned.replace(f'"{form}"', "your vibe")
             cleaned = cleaned.replace(f"“{form}”", "your vibe")
-    # Clean up clumsy leftovers from replacements.
     cleaned = re.sub(r"\byour vibe\b(, your vibe)+", "your vibe", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
     return cleaned
@@ -381,12 +375,6 @@ def _call_ollama(prompt: str) -> str:
 
 
 def match_coffee_with_ai(answers: list[dict[str, Any]]) -> tuple[CoffeeDrink, str]:
-    """
-    Returns (drink, personalized_blurb).
-
-    Drink selection uses a fast local heuristic so Finish never hangs.
-    Ollama writes the personalized blurb when available; otherwise we fall back.
-    """
     drink = _heuristic_match(answers)
 
     if not _ollama_available():

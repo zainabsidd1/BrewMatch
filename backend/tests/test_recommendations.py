@@ -133,7 +133,6 @@ def test_try_something_new_is_a_random_untried_drink(monkeypatch):
     assert ("latte", "hot", "") not in candidate_keys
     assert ("latte", "hot", "vanilla") not in candidate_keys
     assert ("americano", "iced", "") not in candidate_keys
-    # Same base with a new syrup or temperature still counts as a new drink.
     assert ("latte", "iced", "") in candidate_keys
     assert ("latte", "hot", "caramel") in candidate_keys
     assert ("americano", "hot", "") in candidate_keys

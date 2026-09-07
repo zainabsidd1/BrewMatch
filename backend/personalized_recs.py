@@ -43,7 +43,6 @@ class DrinkCombination:
 
     @property
     def drink_key(self) -> tuple[str, str, str]:
-        """Base + temperature + syrup. Modifier add-ons do not change the drink."""
         return (self.drink_id, self.temperature, self.syrup or "")
 
     @property
@@ -73,9 +72,6 @@ def _iter_combinations() -> list[DrinkCombination]:
     for attrs in DRINK_ATTRIBUTES.values():
         syrups: list[str | None] = [None, *attrs["compatible_syrups"]]
         modifiers: list[str | None] = [None, *attrs["compatible_modifiers"]]
-        if attrs["implied_syrup"] and attrs["implied_syrup"] not in (attrs["compatible_syrups"]):
-            # Implied flavor is part of the drink, not an add-on syrup.
-            pass
         for temperature in attrs["temperatures"]:
             for syrup in syrups:
                 if syrup and syrup == attrs["implied_syrup"]:
