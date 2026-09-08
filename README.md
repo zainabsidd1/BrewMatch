@@ -1,34 +1,21 @@
-# BrewMatch
+# BrewMatch ☕
 
-Coffee recommender with a quiz, journal, and personalized drink suggestions.
+BrewMatch is a full-stack coffee recommendation app built with **Next.js, React, TypeScript, Tailwind CSS, FastAPI, PostgreSQL, and SQLAlchemy**. It matches users to drinks through a randomized personality quiz, then uses their coffee journal and ratings to personalize future suggestions.
 
-## Repo layout
+Users can register/login, take the quiz, save and rate drinks, track them on a calendar, view streaks and stats, and receive both a familiar recommendation and a “Try Something New” suggestion based on their taste history.
 
-- `frontend/` — Next.js app (TypeScript, Tailwind). Deployed on Vercel.
-- `backend/` — FastAPI API + PostgreSQL. Deployed on Render.
-- `.github/workflows/` — CI, then deploy on push to `main`.
+This application includes:
+- User Registration and JWT Authentication
+- Randomized 15-Question Personality Quiz
+- Personalized Coffee Recommendation Engine
+- Coffee Journal with Ratings, Notes, Calendar, and Streaks
+- PostgreSQL Persistence with SQLAlchemy ORM
+- Protected REST API Routes with FastAPI
+- Responsive UI with React and Tailwind CSS
+- Automated Testing with pytest, Vitest, and React Testing Library
+- **CI/CD Pipeline with GitHub Actions**
 
+**Live demo:** https://brew-match-two.vercel.app/
 
-## Local setup
+**Demo account:** `johndoe@gmail.com` / `123456`
 
-**API** (from `backend/`):
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # then edit DATABASE_URL if needed
-uvicorn main:app --reload --port 8000
-```
-
-Postgres should be running locally (`DATABASE_URL` in `backend/.env`).
-
-**Web app** (from `frontend/`):
-
-```bash
-npm ci
-cp .env.example .env.local
-npm run dev
-```
-
-Open http://localhost:3000. The frontend expects the API at http://localhost:8000 unless you change `NEXT_PUBLIC_API_URL`.
