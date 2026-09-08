@@ -44,7 +44,7 @@ def _never_call_real_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
     def _unavailable() -> bool:
         return False
 
-    def _blocked(prompt: str) -> str:
+    def _blocked(*_args, **_kwargs) -> str:
         raise AssertionError("Tests must not call the real Ollama server")
 
     monkeypatch.setattr("ai_match._ollama_available", _unavailable)

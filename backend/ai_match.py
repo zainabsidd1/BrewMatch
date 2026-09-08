@@ -350,7 +350,11 @@ def _ollama_available() -> bool:
         return False
 
 
-def _call_ollama(prompt: str) -> str:
+def _call_ollama(
+    prompt: str,
+    temperature: float = 0.7,
+    num_predict: int = 180,
+) -> str:
     url = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
     payload = {
         "model": OLLAMA_MODEL,
@@ -358,8 +362,8 @@ def _call_ollama(prompt: str) -> str:
         "stream": False,
         "format": "json",
         "options": {
-            "temperature": 0.7,
-            "num_predict": 180,
+            "temperature": temperature,
+            "num_predict": num_predict,
         },
     }
 

@@ -8,6 +8,7 @@ from personalized_recs import (
     generate_exploration_recommendation,
     generate_familiar_recommendation,
     generate_personalized_recommendations,
+    rank_exploration_candidates,
 )
 from taste_profile import build_user_taste_profile
 
@@ -98,7 +99,7 @@ def test_what_you_might_like_follows_historical_taste_trends():
     assert recommendation.drink_id in {"americano", *profile.liked_base_ids}
 
 
-def test_try_something_new_is_a_random_untried_drink(monkeypatch):
+def test_try_something_new_ranks_untried_drinks_by_taste():
     from personalized_recs import DrinkCombination
 
     logs = [
@@ -115,30 +116,24 @@ def test_try_something_new_is_a_random_untried_drink(monkeypatch):
         syrup=None,
         modifier=None,
     )
-    captured: list = []
 
-    def _choice(seq):
-        captured.extend(seq)
-        return seq[0]
-
-    monkeypatch.setattr("personalized_recs.random.choice", _choice)
-
+    shortlist = rank_exploration_candidates(profile, logs, familiar)
     recommendation = generate_exploration_recommendation(profile, logs, familiar)
-
     logged_keys = _logged_drink_keys(logs)
-    candidate_keys = {combo.drink_key for combo in captured}
+    candidate_keys = {combo.drink_key for combo, _score in shortlist}
 
+    assert len(shortlist) == 5
+    assert recommendation.drink_key == shortlist[0][0].drink_key
     assert recommendation.drink_key not in logged_keys
     assert recommendation.drink_key != familiar.drink_key
     assert ("latte", "hot", "") not in candidate_keys
     assert ("latte", "hot", "vanilla") not in candidate_keys
     assert ("americano", "iced", "") not in candidate_keys
-    assert ("latte", "iced", "") in candidate_keys
-    assert ("latte", "hot", "caramel") in candidate_keys
-    assert ("americano", "hot", "") in candidate_keys
+    scores = [score for _combo, score in shortlist]
+    assert scores == sorted(scores, reverse=True)
 
 
-def test_try_something_new_uses_catalog_description(monkeypatch):
+def test_try_something_new_uses_catalog_description_when_ai_unavailable(monkeypatch):
     from coffee_catalog import COFFEE_DRINKS
     from personalized_recs import DrinkCombination
 
@@ -151,8 +146,8 @@ def test_try_something_new_uses_catalog_description(monkeypatch):
         modifier=None,
     )
     monkeypatch.setattr(
-        "personalized_recs.generate_exploration_recommendation",
-        lambda *_args, **_kwargs: combo,
+        "personalized_recs.rank_exploration_candidates",
+        lambda *_args, **_kwargs: [(combo, 1.0)],
     )
 
     logs = [
@@ -162,10 +157,148 @@ def test_try_something_new_uses_catalog_description(monkeypatch):
     result = generate_personalized_recommendations(logs)
     catalog = next(drink for drink in COFFEE_DRINKS if drink["id"] == "cold-brew")
 
+    assert result["try_something_new"]["drink_id"] == "cold-brew"
     assert result["try_something_new"]["explanation"] == catalog["description"]
     assert result["try_something_new"]["explanation"] == _combo_catalog_description(
         combo
     )
+
+
+def test_try_something_new_ollama_picks_from_shortlist_only(monkeypatch):
+    from personalized_recs import DrinkCombination
+
+    first = DrinkCombination(
+        drink_id="americano",
+        base_drink="Americano",
+        temperature="hot",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    second = DrinkCombination(
+        drink_id="cold-brew",
+        base_drink="Cold Brew",
+        temperature="iced",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    monkeypatch.setattr(
+        "personalized_recs.rank_exploration_candidates",
+        lambda *_args, **_kwargs: [(first, 4.0), (second, 3.5)],
+    )
+    monkeypatch.setattr("personalized_recs._ollama_available", lambda: True)
+
+    def _fake(prompt: str, **_kwargs: object) -> str:
+        if "Shortlist:" in prompt:
+            return (
+                '{"choice": 2, "explanation": "Cold brew is a cooler next step '
+                'than another hot americano."}'
+            )
+        return '{"explanation": "This stays close to drinks you already enjoy."}'
+
+    monkeypatch.setattr("personalized_recs._call_ollama", _fake)
+
+    logs = [
+        _log("latte", "Latte", 5, notes="too milky for mornings"),
+        _log("latte", "Vanilla Latte", 4),
+    ]
+    result = generate_personalized_recommendations(logs)
+
+    assert result["try_something_new"]["drink_id"] == "cold-brew"
+    assert "cooler next step" in result["try_something_new"]["explanation"]
+
+
+def test_try_something_new_rejects_ollama_choice_outside_shortlist(monkeypatch):
+    from personalized_recs import DrinkCombination
+
+    first = DrinkCombination(
+        drink_id="americano",
+        base_drink="Americano",
+        temperature="hot",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    second = DrinkCombination(
+        drink_id="cold-brew",
+        base_drink="Cold Brew",
+        temperature="iced",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    monkeypatch.setattr(
+        "personalized_recs.rank_exploration_candidates",
+        lambda *_args, **_kwargs: [(first, 4.0), (second, 3.5)],
+    )
+    monkeypatch.setattr("personalized_recs._ollama_available", lambda: True)
+
+    def _fake(prompt: str, **_kwargs: object) -> str:
+        if "Shortlist:" in prompt:
+            return (
+                '{"choice": 9, "explanation": "You would love a pumpkin spice latte."}'
+            )
+        return '{"explanation": "This stays close to drinks you already enjoy."}'
+
+    monkeypatch.setattr("personalized_recs._call_ollama", _fake)
+
+    logs = [
+        _log("latte", "Latte", 5),
+        _log("mocha", "Mocha", 4),
+    ]
+    result = generate_personalized_recommendations(logs)
+
+    assert result["try_something_new"]["drink_id"] == "americano"
+    assert result["try_something_new"]["explanation"] == _combo_catalog_description(
+        first
+    )
+
+
+def test_exploration_rerank_prompt_includes_journal_notes(monkeypatch):
+    from personalized_recs import DrinkCombination
+
+    first = DrinkCombination(
+        drink_id="americano",
+        base_drink="Americano",
+        temperature="hot",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    second = DrinkCombination(
+        drink_id="cold-brew",
+        base_drink="Cold Brew",
+        temperature="iced",
+        sweetness="low",
+        syrup=None,
+        modifier=None,
+    )
+    captured: list[str] = []
+    monkeypatch.setattr(
+        "personalized_recs.rank_exploration_candidates",
+        lambda *_args, **_kwargs: [(first, 4.0), (second, 3.5)],
+    )
+    monkeypatch.setattr("personalized_recs._ollama_available", lambda: True)
+
+    def _fake(prompt: str, **_kwargs: object) -> str:
+        captured.append(prompt)
+        if "Shortlist:" in prompt:
+            return '{"choice": 1, "explanation": "A related cup you have not logged yet."}'
+        return '{"explanation": "Familiar match."}'
+
+    monkeypatch.setattr("personalized_recs._call_ollama", _fake)
+
+    logs = [
+        _log("latte", "Latte", 5, notes="too milky for mornings"),
+    ]
+    generate_personalized_recommendations(logs)
+
+    rerank_prompt = next(prompt for prompt in captured if "Shortlist:" in prompt)
+    assert "too milky for mornings" in rerank_prompt
+    assert "1. " in rerank_prompt
+    assert "2. " in rerank_prompt
+    assert "heuristic_score" in rerank_prompt
 
 
 def test_zero_history_returns_fallback_state(monkeypatch):
@@ -193,7 +326,7 @@ def test_ollama_timeout_does_not_break_recommendations(monkeypatch):
 
     monkeypatch.setattr("personalized_recs._ollama_available", lambda: True)
 
-    def _timeout(prompt: str) -> str:
+    def _timeout(*_args, **_kwargs) -> str:
         raise httpx.TimeoutException("Ollama timed out")
 
     monkeypatch.setattr("personalized_recs._call_ollama", _timeout)

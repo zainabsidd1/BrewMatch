@@ -21,6 +21,8 @@ from taste_profile import TasteProfile, build_user_taste_profile, profile_public
 logger = logging.getLogger(__name__)
 
 SWEETNESS_LABEL = {"low": "low", "medium": "medium", "high": "high"}
+EXPLORATION_SHORTLIST_SIZE = 5
+JOURNAL_CONTEXT_LIMIT = 8
 
 
 @dataclass(frozen=True)
@@ -216,33 +218,74 @@ def generate_familiar_recommendation(
     return ranked[0]
 
 
-def generate_exploration_recommendation(
-    _profile: TasteProfile,
+def _combo_sort_key(combo: DrinkCombination, profile: TasteProfile) -> tuple:
+    return (
+        -_score_combination(combo, profile),
+        combo.drink_id,
+        combo.temperature,
+        combo.syrup or "",
+        combo.modifier or "",
+    )
+
+
+def _untried_pool(
+    combos: list[DrinkCombination],
+    logged: set[tuple[str, str, str]],
+    familiar_key: tuple[str, str, str] | None,
+) -> list[DrinkCombination]:
+    return [
+        combo
+        for combo in combos
+        if combo.drink_key not in logged and combo.drink_key != familiar_key
+    ]
+
+
+def rank_exploration_candidates(
+    profile: TasteProfile,
     logs: list[Any],
     familiar: DrinkCombination | None = None,
-) -> DrinkCombination:
+    limit: int = EXPLORATION_SHORTLIST_SIZE,
+) -> list[tuple[DrinkCombination, float]]:
+    """Heuristic retrieve: top untried combinations by taste-profile score."""
     logged = _logged_drink_keys(logs)
     familiar_key = familiar.drink_key if familiar is not None else None
 
-    def _pool(combos: list[DrinkCombination]) -> list[DrinkCombination]:
-        return [
-            combo
-            for combo in combos
-            if combo.drink_key not in logged and combo.drink_key != familiar_key
-        ]
-
-    candidates = _pool(PLAIN_COMBINATIONS)
-    if not candidates:
-        candidates = _pool(ALL_COMBINATIONS)
-    if not candidates:
-        candidates = [
+    pools = [
+        _untried_pool(PLAIN_COMBINATIONS, logged, familiar_key),
+        _untried_pool(ALL_COMBINATIONS, logged, familiar_key),
+        [
             combo
             for combo in PLAIN_COMBINATIONS
             if familiar is None or combo.drink_key != familiar_key
-        ]
-    if not candidates:
-        candidates = ALL_COMBINATIONS
-    return random.choice(candidates)
+        ],
+        list(ALL_COMBINATIONS),
+    ]
+
+    chosen: list[DrinkCombination] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for pool in pools:
+        for combo in sorted(pool, key=lambda item: _combo_sort_key(item, profile)):
+            if combo.key in seen:
+                continue
+            seen.add(combo.key)
+            chosen.append(combo)
+            if len(chosen) >= limit:
+                return [
+                    (item, _score_combination(item, profile)) for item in chosen
+                ]
+
+    return [(item, _score_combination(item, profile)) for item in chosen]
+
+
+def generate_exploration_recommendation(
+    profile: TasteProfile,
+    logs: list[Any],
+    familiar: DrinkCombination | None = None,
+) -> DrinkCombination:
+    ranked = rank_exploration_candidates(profile, logs, familiar)
+    if ranked:
+        return ranked[0][0]
+    return generate_random_recommendation()
 
 
 def _combo_public(combo: DrinkCombination, explanation: str) -> dict[str, Any]:
@@ -333,6 +376,80 @@ def _explain_with_ollama(
         return None
 
 
+def _recent_journal_context(logs: list[Any], limit: int = JOURNAL_CONTEXT_LIMIT) -> str:
+    def _sort_key(log: Any) -> tuple:
+        tried = getattr(log, "date_tried", None)
+        added = getattr(log, "date_added", None)
+        return (tried or added or 0,)
+
+    recent = sorted(logs, key=_sort_key, reverse=True)[:limit]
+    lines: list[str] = []
+    for log in recent:
+        name = getattr(log, "drink_name", "unknown drink")
+        rating = getattr(log, "rating", None)
+        notes = str(getattr(log, "notes", None) or "").strip()
+        rating_bit = f"rated {rating}/5" if rating is not None else "unrated"
+        if notes:
+            lines.append(f"- {name} ({rating_bit}): {notes[:220]}")
+        else:
+            lines.append(f"- {name} ({rating_bit})")
+    return "\n".join(lines) if lines else "No journal entries."
+
+
+def _rerank_exploration_with_ollama(
+    shortlist: list[tuple[DrinkCombination, float]],
+    profile: TasteProfile,
+    logs: list[Any],
+) -> tuple[DrinkCombination, str] | None:
+    if len(shortlist) < 2 or not _ollama_available():
+        return None
+
+    numbered: list[str] = []
+    for index, (combo, score) in enumerate(shortlist, start=1):
+        numbered.append(
+            f"{index}. {combo.display_name} | id={combo.drink_id} | "
+            f"temp={combo.temperature} | sweetness={combo.sweetness} | "
+            f"syrup={combo.syrup or 'none'} | modifier={combo.modifier or 'none'} | "
+            f"heuristic_score={score:.2f}"
+        )
+
+    prompt = (
+        "You are BrewMatch. Choose exactly one drink combination from the numbered "
+        "shortlist. Do not invent drinks, syrups, or modifiers.\n"
+        "These candidates are already untried. Pick the one that best fits the user's "
+        "taste while still feeling like something new.\n"
+        f"Return JSON only with keys: choice, explanation. choice must be an integer "
+        f"from 1 to {len(shortlist)}.\n"
+        "explanation: 2 to 3 warm sentences on why this pick beats the other shortlisted "
+        "options. Never use em dashes. Never quote journal notes verbatim.\n\n"
+        f"Preferred temperature: {profile.preferred_temperature}\n"
+        f"Sweetness: {profile.sweetness}\n"
+        f"Strength: {profile.strength}\n"
+        f"Milk preference: {profile.milk_preference}\n"
+        f"Liked flavors: {', '.join(profile.preferred_flavors) or 'none'}\n"
+        f"Avoided flavors: {', '.join(profile.avoided_flavors) or 'none'}\n"
+        f"Liked bases: {', '.join(profile.liked_base_ids[:4]) or 'none'}\n\n"
+        f"Recent journal:\n{_recent_journal_context(logs)}\n\n"
+        "Shortlist:\n"
+        + "\n".join(numbered)
+    )
+
+    try:
+        content = _call_ollama(prompt, temperature=0.15, num_predict=160)
+        payload = _parse_ai_json(content)
+        raw_choice = payload.get("choice")
+        choice = int(raw_choice)
+        if choice < 1 or choice > len(shortlist):
+            raise ValueError(f"choice {choice} outside shortlist")
+        text = _soften_punctuation(str(payload.get("explanation", "")).strip())
+        if not text:
+            raise ValueError("Missing explanation")
+        return shortlist[choice - 1][0], text
+    except Exception as exc:
+        logger.warning("Ollama exploration rerank failed (%s)", exc)
+        return None
+
+
 def generate_personalized_recommendations(logs: list[Any]) -> dict[str, Any]:
     profile = build_user_taste_profile(logs)
 
@@ -349,18 +466,25 @@ def generate_personalized_recommendations(logs: list[Any]) -> dict[str, Any]:
         }
 
     familiar = generate_familiar_recommendation(profile, logs)
-    explore = generate_exploration_recommendation(profile, logs, familiar)
+    shortlist = rank_exploration_candidates(profile, logs, familiar)
+    explore = shortlist[0][0] if shortlist else generate_random_recommendation()
 
     familiar_text = _explain_with_ollama(familiar, profile, "familiar")
     if not familiar_text:
         familiar_text = _fallback_familiar_explanation(familiar, profile)
+
+    reranked = _rerank_exploration_with_ollama(shortlist, profile, logs)
+    if reranked is not None:
+        explore, explore_text = reranked
+    else:
+        explore_text = _combo_catalog_description(explore)
 
     return {
         "taste_profile": profile_public_dict(profile),
         "what_you_might_like": _combo_public(familiar, familiar_text),
         "try_something_new": _combo_public(
             explore,
-            _combo_catalog_description(explore),
+            explore_text,
         ),
         "message": None,
     }
