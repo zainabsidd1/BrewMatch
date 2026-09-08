@@ -6,14 +6,12 @@ Users can register/login, take the quiz, save and rate drinks, track them on a c
 
 This application includes:
 - User Registration and JWT Authentication
-- Randomized 15-Question Personality Quiz
-- Personalized Coffee Recommendation Engine
-- Coffee Journal with Ratings, Notes, Calendar, and Streaks
+- **AI-Powered Recommendations** using Heuristic Candidate Generation and Ollama
 - PostgreSQL Persistence with SQLAlchemy ORM
-- Protected REST API Routes with FastAPI
+- Protected **REST API** Routes with FastAPI
 - Responsive UI with React and Tailwind CSS
 - Automated Testing with pytest, Vitest, and React Testing Library
-- **CI/CD Pipeline with GitHub Actions**
+- **CI/CD** Pipeline with GitHub Actions
 
 **Live demo:** https://brew-match-two.vercel.app/
 
